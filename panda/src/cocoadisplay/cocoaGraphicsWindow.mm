@@ -76,7 +76,7 @@ CocoaGraphicsWindow(GraphicsEngine *engine, GraphicsPipe *pipe,
   if (NSApp == nil) {
     [CocoaPandaApp sharedApplication];
 
-    CocoaPandaAppDelegate *delegate = [[CocoaPandaAppDelegate alloc] init];
+    CocoaPandaAppDelegate *delegate = [[CocoaPandaAppDelegate alloc] initWithEngine:engine];
     [NSApp setDelegate:delegate];
 
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
@@ -137,15 +137,17 @@ move_pointer(int device, int x, int y) {
   if (device == 0) {
     CGPoint point;
     if (_properties.get_fullscreen()) {
-      point = CGPointMake(x, y + 1);
+      point = CGPointMake(x, y);
     } else {
       point = CGPointMake(x + _properties.get_x_origin(),
-                          y + _properties.get_y_origin() + 1);
+                          y + _properties.get_y_origin());
     }
 
-    // I don't know what the difference between these two methods is.  if
-    // (CGWarpMouseCursorPosition(point) == kCGErrorSuccess) {
-    if (CGDisplayMoveCursorToPoint(_display, point) == kCGErrorSuccess) {
+    if (CGWarpMouseCursorPosition(point) == kCGErrorSuccess) {
+      //After moving (or warping) the mouse position, CG starts an event
+      // suppression interval during which no more mouse events can occur
+      // This interval can be interupted by the following call :
+      CGAssociateMouseAndMouseCursorPosition(YES);
       // Generate a mouse event.
       NSPoint pos = [_window mouseLocationOutsideOfEventStream];
       NSPoint loc = [_view convertPoint:pos fromView:nil];
@@ -184,29 +186,29 @@ begin_frame(FrameMode mode, Thread *current_thread) {
   cocoagsg->lock_context();
 
   // Set the drawable.
-  if (_properties.get_fullscreen()) {
-    // Fullscreen.
-    CGLSetFullScreenOnDisplay((CGLContextObj) [cocoagsg->_context CGLContextObj], CGDisplayIDToOpenGLDisplayMask(_display));
-  } else {
-    // Although not recommended, it is technically possible to use the same
-    // context with multiple different-sized windows.  If that happens, the
-    // context needs to be updated accordingly.
-    if ([cocoagsg->_context view] != _view) {
-      // XXX I'm not 100% sure that changing the view requires it to update.
-      _context_needs_update = true;
-      [cocoagsg->_context setView:_view];
+  // Although not recommended, it is technically possible to use the same
+  // context with multiple different-sized windows.  If that happens, the
+  // context needs to be updated accordingly.
+  if ([cocoagsg->_context view] != _view) {
+    // XXX I'm not 100% sure that changing the view requires it to update.
+    _context_needs_update = true;
+    [cocoagsg->_context setView:_view];
 
-      if (cocoadisplay_cat.is_spam()) {
-        cocoadisplay_cat.spam()
-          << "Switching context to view " << _view << "\n";
-      }
+    if (cocoadisplay_cat.is_spam()) {
+      cocoadisplay_cat.spam()
+        << "Switching context to view " << _view << "\n";
     }
   }
 
   // Update the context if necessary, to make it reallocate buffers etc.
   if (_context_needs_update) {
-    [cocoagsg->_context update];
-    _context_needs_update = false;
+    if ([NSThread isMainThread]) {
+      [cocoagsg->_context update];
+      _context_needs_update = false;
+    } else {
+      cocoagsg->unlock_context();
+      return false;
+    }
   }
 
   // Lock the view for drawing.
@@ -347,6 +349,18 @@ process_events() {
   }
 
   [pool release];
+
+  if (_context_needs_update && _gsg != nullptr) {
+    CocoaGraphicsStateGuardian *cocoagsg;
+    DCAST_INTO_V(cocoagsg, _gsg);
+
+    if (cocoagsg != nullptr && cocoagsg->_context != nil) {
+      cocoagsg->lock_context();
+      _context_needs_update = false;
+      [cocoagsg->_context update];
+      cocoagsg->unlock_context();
+    }
+  }
 }
 
 /**
@@ -607,7 +621,7 @@ open_window() {
     }
 
     if (_properties.get_fullscreen()) {
-      [_window setLevel: NSMainMenuWindowLevel + 1];
+      [_window setLevel: CGShieldingWindowLevel()];
     } else {
       switch (_properties.get_z_order()) {
       case WindowProperties::Z_bottom:
@@ -693,7 +707,7 @@ open_window() {
   // Enable relative mouse mode, if this was requested.
   if (_properties.has_mouse_mode() &&
       _properties.get_mouse_mode() == WindowProperties::M_relative) {
-    mouse_mode_relative();
+    CGAssociateMouseAndMouseCursorPosition(NO);
   }
 
   _vsync_enabled = sync_video && cocoagsg->setup_vsync();
@@ -745,22 +759,6 @@ close_window() {
   _vsync_enabled = false;
 
   GraphicsWindow::close_window();
-}
-
-/**
- * Overridden from GraphicsWindow.
- */
-void CocoaGraphicsWindow::
-mouse_mode_absolute() {
-  CGAssociateMouseAndMouseCursorPosition(YES);
-}
-
-/**
- * Overridden from GraphicsWindow.
- */
-void CocoaGraphicsWindow::
-mouse_mode_relative() {
-  CGAssociateMouseAndMouseCursorPosition(NO);
 }
 
 /**
@@ -821,7 +819,7 @@ set_properties_now(WindowProperties &properties) {
                 [_window setStyleMask:NSBorderlessWindowMask];
               }
               [_window makeFirstResponder:_view];
-              [_window setLevel:NSMainMenuWindowLevel+1];
+              [_window setLevel:CGShieldingWindowLevel()];
               [_window makeKeyAndOrderFront:nil];
             }
 
@@ -926,10 +924,19 @@ set_properties_now(WindowProperties &properties) {
     NSRect frame;
     NSRect container;
     if (_window != nil) {
-      frame = [_window contentRectForFrameRect:[_window frame]];
+      NSRect window_frame = [_window frame];
+      frame = [_window contentRectForFrameRect:window_frame];
       NSScreen *screen = [_window screen];
       nassertv(screen != nil);
       container = [screen frame];
+
+      // Prevent the centering from overlapping the Dock
+      if (y < 0) {
+        NSRect visible_frame = [screen visibleFrame];
+        if (window_frame.size.height == visible_frame.size.height) {
+          y = 0;
+        }
+      }
     } else {
       frame = [_view frame];
       container = [[_view superview] frame];
@@ -1128,6 +1135,18 @@ set_properties_now(WindowProperties &properties) {
       _properties.set_mouse_mode(properties.get_mouse_mode());
       properties.clear_mouse_mode();
       break;
+    }
+  }
+
+  if (_context_needs_update && _gsg != nullptr) {
+    CocoaGraphicsStateGuardian *cocoagsg;
+    DCAST_INTO_V(cocoagsg, _gsg);
+
+    if (cocoagsg != nullptr && cocoagsg->_context != nil) {
+      cocoagsg->lock_context();
+      _context_needs_update = false;
+      [cocoagsg->_context update];
+      cocoagsg->unlock_context();
     }
   }
 }
@@ -1877,9 +1896,8 @@ handle_mouse_moved_event(bool in_window, double x, double y, bool absolute) {
       }
     }
 
-    // Strangely enough, in Cocoa, mouse Y coordinates are 1-based.
     nx = x;
-    ny = y - 1;
+    ny = y;
 
   } else {
     // We received deltas, so add it to the current mouse position.
@@ -1896,13 +1914,17 @@ handle_mouse_moved_event(bool in_window, double x, double y, bool absolute) {
     ny = std::max(0., std::min((double) get_y_size() - 1, ny));
 
     if (_properties.get_fullscreen()) {
-      point = CGPointMake(nx, ny + 1);
+      point = CGPointMake(nx, ny);
     } else {
       point = CGPointMake(nx + _properties.get_x_origin(),
-                          ny + _properties.get_y_origin() + 1);
+                          ny + _properties.get_y_origin());
     }
 
     if (CGWarpMouseCursorPosition(point) == kCGErrorSuccess) {
+      //After moving (or warping) the mouse position, CG starts an event
+      // suppression interval during which no more mouse events can occur
+      // This interval can be interupted by the following call :
+      CGAssociateMouseAndMouseCursorPosition(YES);
       in_window = true;
     } else {
       cocoadisplay_cat.warning() << "Failed to return mouse pointer to window\n";
@@ -1945,11 +1967,14 @@ handle_wheel_event(double x, double y) {
     _input->button_up(MouseButton::wheel_down());
   }
 
-  // TODO: check if this is correct, I don't own a MacBook
-  if (x > 0.0) {
+  if (x != 0 && cocoa_invert_wheel_x) {
+    x = -x;
+  }
+
+  if (x < 0.0) {
     _input->button_down(MouseButton::wheel_right());
     _input->button_up(MouseButton::wheel_right());
-  } else if (x < 0.0) {
+  } else if (x > 0.0) {
     _input->button_down(MouseButton::wheel_left());
     _input->button_up(MouseButton::wheel_left());
   }
@@ -2174,6 +2199,7 @@ map_raw_key(unsigned short keycode) const {
   case 0x07: return KeyboardButton::ascii_key('x');
   case 0x08: return KeyboardButton::ascii_key('c');
   case 0x09: return KeyboardButton::ascii_key('v');
+  case 0x0A: return KeyboardButton::ascii_key('<');
   case 0x0B: return KeyboardButton::ascii_key('b');
   case 0x0C: return KeyboardButton::ascii_key('q');
   case 0x0D: return KeyboardButton::ascii_key('w');

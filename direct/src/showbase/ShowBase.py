@@ -19,7 +19,9 @@ Built-in global variables
 Some key variables used in all Panda3D scripts are actually attributes of the
 ShowBase instance.  When creating an instance of this class, it will write many
 of these variables to the built-in scope of the Python interpreter, so that
-they are accessible to any Python module, without the need fors extra imports.
+they are accessible to any Python module, without the need for extra imports.
+For example, the ShowBase instance itself is accessible anywhere through the
+:data:`~builtins.base` variable.
 
 While these are handy for prototyping, we do not recommend using them in bigger
 projects, as it can make the code confusing to read to other Python developers,
@@ -384,18 +386,21 @@ class ShowBase(DirectObject.DirectObject):
 
         # Get a pointer to Panda's global ClockObject, used for
         # synchronizing events between Python and C.
-        globalClock = ClockObject.getGlobalClock()
+        clock = ClockObject.getGlobalClock()
+
+        #: This is the global :class:`~panda3d.core.ClockObject`.
+        self.clock = clock
 
         # Since we have already started up a TaskManager, and probably
         # a number of tasks; and since the TaskManager had to use the
         # TrueClock to tell time until this moment, make sure the
         # globalClock object is exactly in sync with the TrueClock.
         trueClock = TrueClock.getGlobalPtr()
-        globalClock.setRealTime(trueClock.getShortTime())
-        globalClock.tick()
+        clock.setRealTime(trueClock.getShortTime())
+        clock.tick()
 
-        # Now we can make the TaskManager start using the new globalClock.
-        taskMgr.globalClock = globalClock
+        # Now we can make the TaskManager start using the new clock.
+        taskMgr.globalClock = clock
 
         # client CPU affinity is determined by, in order:
         # - client-cpu-affinity-mask config
@@ -444,7 +449,7 @@ class ShowBase(DirectObject.DirectObject):
         builtins.ostream = Notify.out()
         builtins.directNotify = directNotify
         builtins.giveNotify = giveNotify
-        builtins.globalClock = globalClock
+        builtins.globalClock = clock
         builtins.vfs = vfs
         builtins.cpMgr = ConfigPageManager.getGlobalPtr()
         builtins.cvMgr = ConfigVariableManager.getGlobalPtr()
@@ -725,7 +730,7 @@ class ShowBase(DirectObject.DirectObject):
                               of :meth:`~panda3d.core.GraphicsWindow.setUnexposedDraw()`.
 
         :param callbackWindowDict: If not None, a
-                                   :class:`~panda3d.core.CallbackGraphicWindow`
+                                   :class:`~panda3d.core.CallbackGraphicsWindow`
                                    is created instead, which allows the caller
                                    to create the actual window with its own
                                    OpenGL context, and direct Panda's rendering
@@ -1146,7 +1151,7 @@ class ShowBase(DirectObject.DirectObject):
         Creates the render scene graph, the primary scene graph for
         rendering 3-d geometry.
         """
-        ## This is the root of the 3-D scene graph.
+        #: This is the root of the 3-D scene graph.
         self.render = NodePath('render')
         self.render.setAttrib(RescaleNormalAttrib.makeDefault())
 
@@ -1165,7 +1170,7 @@ class ShowBase(DirectObject.DirectObject):
         # for the benefit of creating DirectGui elements before ShowBase.
         from . import ShowBaseGlobal
 
-        ## This is the root of the 2-D scene graph.
+        #: This is the root of the 2-D scene graph.
         self.render2d = ShowBaseGlobal.render2d
 
         # Set up some overrides to turn off certain properties which
@@ -1186,12 +1191,12 @@ class ShowBase(DirectObject.DirectObject):
         self.render2d.setMaterialOff(1)
         self.render2d.setTwoSided(1)
 
-        ## The normal 2-d DisplayRegion has an aspect ratio that
-        ## matches the window, but its coordinate system is square.
-        ## This means anything we parent to render2d gets stretched.
-        ## For things where that makes a difference, we set up
-        ## aspect2d, which scales things back to the right aspect
-        ## ratio along the X axis (Z is still from -1 to 1)
+        #: The normal 2-d DisplayRegion has an aspect ratio that
+        #: matches the window, but its coordinate system is square.
+        #: This means anything we parent to render2d gets stretched.
+        #: For things where that makes a difference, we set up
+        #: aspect2d, which scales things back to the right aspect
+        #: ratio along the X axis (Z is still from -1 to 1)
         self.aspect2d = ShowBaseGlobal.aspect2d
 
         aspectRatio = self.getAspectRatio()
@@ -1199,13 +1204,13 @@ class ShowBase(DirectObject.DirectObject):
 
         self.a2dBackground = self.aspect2d.attachNewNode("a2dBackground")
 
-        ## The Z position of the top border of the aspect2d screen.
+        #: The Z position of the top border of the aspect2d screen.
         self.a2dTop = 1.0
-        ## The Z position of the bottom border of the aspect2d screen.
+        #: The Z position of the bottom border of the aspect2d screen.
         self.a2dBottom = -1.0
-        ## The X position of the left border of the aspect2d screen.
+        #: The X position of the left border of the aspect2d screen.
         self.a2dLeft = -aspectRatio
-        ## The X position of the right border of the aspect2d screen.
+        #: The X position of the right border of the aspect2d screen.
         self.a2dRight = aspectRatio
 
         self.a2dTopCenter = self.aspect2d.attachNewNode("a2dTopCenter")
@@ -1245,9 +1250,9 @@ class ShowBase(DirectObject.DirectObject):
         self.a2dBottomRight.setPos(self.a2dRight, 0, self.a2dBottom)
         self.a2dBottomRightNs.setPos(self.a2dRight, 0, self.a2dBottom)
 
-        ## This special root, pixel2d, uses units in pixels that are relative
-        ## to the window. The upperleft corner of the window is (0, 0),
-        ## the lowerleft corner is (xsize, -ysize), in this coordinate system.
+        #: This special root, pixel2d, uses units in pixels that are relative
+        #: to the window. The upperleft corner of the window is (0, 0),
+        #: the lowerleft corner is (xsize, -ysize), in this coordinate system.
         self.pixel2d = self.render2d.attachNewNode(PGTop("pixel2d"))
         self.pixel2d.setPos(-1, 0, 1)
         xsize, ysize = self.getSize()
@@ -1277,25 +1282,25 @@ class ShowBase(DirectObject.DirectObject):
         self.render2dp.setMaterialOff(1)
         self.render2dp.setTwoSided(1)
 
-        ## The normal 2-d DisplayRegion has an aspect ratio that
-        ## matches the window, but its coordinate system is square.
-        ## This means anything we parent to render2dp gets stretched.
-        ## For things where that makes a difference, we set up
-        ## aspect2dp, which scales things back to the right aspect
-        ## ratio along the X axis (Z is still from -1 to 1)
+        #: The normal 2-d DisplayRegion has an aspect ratio that
+        #: matches the window, but its coordinate system is square.
+        #: This means anything we parent to render2dp gets stretched.
+        #: For things where that makes a difference, we set up
+        #: aspect2dp, which scales things back to the right aspect
+        #: ratio along the X axis (Z is still from -1 to 1)
         self.aspect2dp = self.render2dp.attachNewNode(PGTop("aspect2dp"))
         self.aspect2dp.node().setStartSort(16384)
 
         aspectRatio = self.getAspectRatio()
         self.aspect2dp.setScale(1.0 / aspectRatio, 1.0, 1.0)
 
-        ## The Z position of the top border of the aspect2dp screen.
+        #: The Z position of the top border of the aspect2dp screen.
         self.a2dpTop = 1.0
-        ## The Z position of the bottom border of the aspect2dp screen.
+        #: The Z position of the bottom border of the aspect2dp screen.
         self.a2dpBottom = -1.0
-        ## The X position of the left border of the aspect2dp screen.
+        #: The X position of the left border of the aspect2dp screen.
         self.a2dpLeft = -aspectRatio
-        ## The X position of the right border of the aspect2dp screen.
+        #: The X position of the right border of the aspect2dp screen.
         self.a2dpRight = aspectRatio
 
         self.a2dpTopCenter = self.aspect2dp.attachNewNode("a2dpTopCenter")
@@ -1319,9 +1324,9 @@ class ShowBase(DirectObject.DirectObject):
         self.a2dpBottomLeft.setPos(self.a2dpLeft, 0, self.a2dpBottom)
         self.a2dpBottomRight.setPos(self.a2dpRight, 0, self.a2dpBottom)
 
-        ## This special root, pixel2d, uses units in pixels that are relative
-        ## to the window. The upperleft corner of the window is (0, 0),
-        ## the lowerleft corner is (xsize, -ysize), in this coordinate system.
+        #: This special root, pixel2dp, uses units in pixels that are relative
+        #: to the window. The upperleft corner of the window is (0, 0),
+        #: the lowerleft corner is (xsize, -ysize), in this coordinate system.
         self.pixel2dp = self.render2dp.attachNewNode(PGTop("pixel2dp"))
         self.pixel2dp.node().setStartSort(16384)
         self.pixel2dp.setPos(-1, 0, 1)
@@ -1642,11 +1647,11 @@ class ShowBase(DirectObject.DirectObject):
 
         mw = self.buttonThrowers[0].getParent()
 
-        ## A special ButtonThrower to generate keyboard events and
-        ## include the time from the OS.  This is separate only to
-        ## support legacy code that did not expect a time parameter; it
-        ## will eventually be folded into the normal ButtonThrower,
-        ## above.
+        #: A special ButtonThrower to generate keyboard events and
+        #: include the time from the OS.  This is separate only to
+        #: support legacy code that did not expect a time parameter; it
+        #: will eventually be folded into the normal ButtonThrower,
+        #: above.
         self.timeButtonThrower = mw.attachNewNode(ButtonThrower('timeButtons'))
         self.timeButtonThrower.node().setPrefix('time-')
         self.timeButtonThrower.node().setTimeFlag(1)
@@ -1899,7 +1904,7 @@ class ShowBase(DirectObject.DirectObject):
         return self.physicsMgrEnabled
 
     def updateManagers(self, state):
-        dt = globalClock.getDt()
+        dt = self.clock.dt
         if self.particleMgrEnabled:
             self.particleMgr.doParticles(dt)
         if self.physicsMgrEnabled:
@@ -1925,7 +1930,11 @@ class ShowBase(DirectObject.DirectObject):
         if port is None:
             port = -1
         PStatClient.connect(hostname, port)
-        return PStatClient.isConnected()
+        if PStatClient.isConnected():
+            PStatClient.mainTick()
+            return True
+        else:
+            return False
 
     def addSfxManager(self, extraSfxManager):
         """
@@ -2704,7 +2713,7 @@ class ShowBase(DirectObject.DirectObject):
 
     def screenshot(self, namePrefix = 'screenshot',
                    defaultFilename = 1, source = None,
-                   imageComment=""):
+                   imageComment="", blocking=True):
         """ Captures a screenshot from the main window or from the
         specified window or Texture and writes it to a filename in the
         current directory (or to a specified directory).
@@ -2726,6 +2735,13 @@ class ShowBase(DirectObject.DirectObject):
         generated by makeCubeMap(), namePrefix should contain the hash
         mark ('#') character.
 
+        Normally, this call will block until the screenshot is fully
+        written.  To write the screenshot in a background thread
+        instead, pass blocking = False.  In this case, the return value
+        is a future that can be awaited.
+
+        A "screenshot" event will be sent once the screenshot is saved.
+
         :returns: The filename if successful, or None if there is a problem.
         """
 
@@ -2742,8 +2758,12 @@ class ShowBase(DirectObject.DirectObject):
                 saved = source.write(filename, 0, 0, 1, 0)
             else:
                 saved = source.write(filename)
-        else:
+        elif blocking:
             saved = source.saveScreenshot(filename, imageComment)
+        else:
+            request = source.saveAsyncScreenshot(filename, imageComment)
+            request.addDoneCallback(lambda fut, filename=filename: messenger.send('screenshot', [filename]))
+            return request
 
         if saved:
             # Announce to anybody that a screenshot has been taken
@@ -2927,14 +2947,15 @@ class ShowBase(DirectObject.DirectObject):
         Returns:
             A `~direct.task.Task` that can be awaited.
         """
-        globalClock.setMode(ClockObject.MNonRealTime)
-        globalClock.setDt(1.0/float(fps))
+        clock = self.clock
+        clock.mode = ClockObject.MNonRealTime
+        clock.dt = 1.0 / fps
         t = self.taskMgr.add(self._movieTask, namePrefix + '_task')
         t.frameIndex = 0  # Frame 0 is not captured.
         t.numFrames = int(duration * fps)
         t.source = source
         t.outputString = namePrefix + '_%0' + repr(sd) + 'd.' + format
-        t.setUponDeath(lambda state: globalClock.setMode(ClockObject.MNormal))
+        t.setUponDeath(lambda state: clock.setMode(ClockObject.MNormal))
         return t
 
     def _movieTask(self, state):

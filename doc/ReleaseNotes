@@ -1,3 +1,248 @@
+-----------------------  RELEASE 1.10.13  -----------------------
+
+This is a significant release containing many important bug fixes and a couple
+of interesting new features.
+
+Rendering
+* Fix single texture stage limit when `gl-version 3 2` or higher is set (#1404)
+* Fix some render-to-texture bugs with multithreaded pipeline (incl. #1364)
+* Fix failure to unset divisor after rendering with hardware instancing
+* Add "MSAA" filter to CommonFilters class as convenience to enable MSAA
+* Fix multisample FBOs with MRT resolving aux target into color target
+* Fix shader generator not responding to fog color changes
+* Fix OpenGL error when downloading GL_LUMINANCE8 texture
+
+Windowing
+* Fix incorrect "without" event generation when mouse leaves window (#1400)
+* Windows: Fix lost "up" events when dragging cursor outside window while
+  multiple mouse buttons are pressed down (#1396)
+* macOS: Fix crash with threading-model on newer macOS versions (#1286)
+* macOS: Fix black screen when going fullscreen on Apple M1-based macs (#1316)
+* macOS: Fix window overlapping Dock when requesting very large height
+* macOS: Improve application termination handling, now sends proper exit events
+* X11: tinydisplay handles window resizes more efficiently
+* X11: Work around window not rendering at first on swaywm (#1087)
+
+Deployment
+* Not all code was being built with optimize level 2
+* Add `keep_docstrings` option to switch to optimize level 1 (#1341)
+* Add `prefer_discrete_gpu` option to force dedicated GPU on Windows (#680)
+* Add `bam_model_extensions` for converting non-egg models to .bam (#714)
+* Work around autodiscovery error when using `setuptools>=61.0.0` (#1394)
+* Default Linux target to `manylinux2014_x86_64` on Python 3.11+
+
+PStats
+* Add support for Python profiling with `pstats-python-profiler` Config.prc var
+* Fix PStats crash at launch from pip installs in newer Linux distros (#1391)
+* Performance improvements to time-based strip chart views
+* Time-based strip charts now can show start/stop count in corner of graphs
+* Optimize client performance when sending a large number of samples
+* Fix dropped frames by changing value for `pstats-max-queue-size` from 1 to 4
+* Server accept clients using PStats protocol version 2.3
+
+Assimp
+* Fix assertion when loading meshes with multiple primitive types
+* Add `assimp-collapse-dummy-root-node` option to remove root node (see #366)
+* Import custom object properties as tags
+* Add support for additional texture maps, including PBR textures
+* Support reading tangent and binormal vectors
+* Improve performance when loading geometry
+* Fix problems reading external files (see #366)
+* Support reading alpha mode when loading .glTF models
+* Add support for texture transforms
+* Add support for texture wrapping modes
+* Fix memory corruption bugs
+
+Build
+* Fixes to `pview.desktop` file on Linux
+* makepanda: Fix problems when building on arm64 on macOS without `--arch` flag
+* makepanda: Fix detection issues with newer macOS / XCode versions
+* makepanda: Fix motiontrail header files not being copied
+* Windows: Fix HTTPClient not working when nativenet module is disabled
+* macOS: Fix OpenCV library refusing to load in arm64 build (#1393)
+* Fix compiler error when compiling for e2k (MCST Elbrus 2000) (#1367)
+
+Miscellaneous
+* Add new motion trails sample program
+* `MotionTrail.add_vertex()` method now directly accepts a vertex position
+* Significant performance optimization of C++-based motion trail implementation
+* Fix race condition when destructing/constructing NodePaths in thread (#1366)
+* Add implementation of capsule-into-polygon collision test (#1369)
+* Fix texture transforms sometimes not being flattened (#1392)
+* Fix support for `#pragma include <file.glsl>` in GLSL shaders
+* Fix `ShaderBuffer.prepare()` not doing anything
+* Implement deepcopy for PointerToArray
+* Fix Texture deepcopy keeping a reference to the original RAM image
+* Fix bf-cbc encryption no longer working when building with OpenSSL 3.0
+* PandaNode bounds_type property was erroneously marked read-only
+* Fix warnings when copying OdeTriMeshGeom objects
+* Fix a crash when using `Notify.set_ostream_ptr()` from Python (#1371)
+* Fix GarbageReport not working with Python 3 (#1304)
+* Make `mat.cols[n]` and `mat.rows[n]` assignable
+* Fix `ExecutionEnvironment.args` being empty on Linux
+* Add various useful functions to interrogatedb module
+* Fix Python 3 issues unpacking uint types in Python 3 (#1380)
+* Fix interrogate syntax error with C++11-style attributes in declarators
+* Fix double-precision color values not being clamped by GeomVertexWriter
+* Fix regression with BufferViewer in double-precision build (#1365)
+* Fix `PandaNode.nested_vertices` not updating properly
+* Prevent Panda calculating bounding volume of Geom with custom bounding volume
+* Add `do_events()` and `process_event()` snake_case aliases in eventMgr
+* Support second arg of None in `replace_texture()` / `replace_material()`
+* Support `os.fspath()` for ConfigVariableFilename objects (#1406)
+* rplight: Fix PSSM calculation failing with infinite far distance (#1397)
+* Remove spurious print in `direct.showutil.Effects.createBounce()` (#1383)
+* Fix assorted compiler warnings
+
+-----------------------  RELEASE 1.10.12  -----------------------
+
+Recommended maintenance release containing primarily bug fixes.
+
+Windowing
+* Windows: Fix origin not respected when switching to windowed mode
+* macOS: Fix origin not being updated when resizing window
+* macOS: Fix off-by-one errors with mouse cursor position
+* macOS: Fix issues with confined mouse mode
+* macOS: Fix events being suppressed when moving the mouse pointer
+* macOS: Invert horizontal scroll, set `cocoa-invert-wheel-x true` to revert
+
+Rendering
+* Add `shadow-cube-map-filter` setting to enable cube map shadow filtering
+* Support floating-point FBOs in OpenGL ES 2+
+* Fix texture format selection in OpenGL with T_half_float component type
+* Added `egl-device-index` config var to select EGL device
+* Offscreen windows in tinydisplay renderer are now resizeable
+* CommonFilters now supports alternative coordinate systems
+* Fix BufferViewer frame when using a different coordinate system
+
+Deployment
+* Fix _bootlocale error in deployed application on Windows with Python 3.10
+* Include _sysconfigdata module properly when using sysconfig module
+* Fix building deploy-stub on platforms that use DT_RUNPATH instead of DT_RPATH
+* `sys.flags.optimize` is now set to 2 in Python 3.2 and above
+* Fix import errors when using scipy
+
+Miscellaneous
+* `Texture::get_ram_image_as()` fixed for 3D textures
+* Fix PStats GPU timing not working with newer NVIDIA drivers
+* Fix false negative in collision test when sphere is fully inside box
+* Resolve segmentation fault when statically linking ffmpeg module
+* Fix issue with failed mmap when using WebcamVideo on Linux
+* macOS: Keyboard/mouse devices are no longer enumerated by default
+* Fix repr of LPlane class
+* Remove dependency on ShowBase in FilterManager
+* Many new functions added to interrogatedb module to query additional info
+* Interrogate no longer writes wrappers with rvalue references to interrogatedb
+* PStats on Linux: Fix mouse motion detected outside strip chart graph area
+* Fix assertion when reading bam file with Bullet convex hull shape
+* Fix memory leak when specifying owner of a task
+* Add additional helpful debug/spam prints to display code
+
+Build
+* Support building with Python 3.11
+* Support building with OpenSSL 1.1.1 on Windows
+* Support building with OpenEXR 3.0 or 3.1 on Windows
+* Fix errors when compiling Panda headers with MinGW
+* Allow compiling Panda headers on Windows without NOMINMAX set
+* Fix wheel platform tag on manylinux aarch64
+* Experimentally allow building with mimalloc on Windows
+* Makepanda records cache timestamps as integers instead of floats
+* Makepanda can now also build tinydisplay on Linux without X11
+* Fix naming of built wheels when building for macOS 12
+
+-----------------------  RELEASE 1.10.11  -----------------------
+
+Maintenance release containing assorted bug fixes and minor improvements.
+
+Rendering
+* Fix erratic shadow bug with multiple lights from gltf/blend2bam (#1153)
+* Fix erratic behavior of HW skinning shaders on non-animated models (#1207)
+* Fix errors with compressed luminance textures in DirectX 9 (#1198)
+* Implement screenshotting multisample backbuffer in DirectX 9 (#1225)
+
+Texture Loading
+* Don't load texture from disk when loading .bam if preloading is off (#1208)
+* Fix TextureReloadRequest not working properly when mipmapping is disabled
+* Add TexturePool.get_texture() method for querying textures in pool
+* Fix crash when opening a .txo, .dds or .ktx file fails
+* Improve error message when calling tex.write() with unknown extension
+
+Input
+* Generate horizontal scroll wheel events on Windows
+* Generate events for mouse buttons 4 and 5 on X11
+* Generate events for lmeta, rmeta and menu keys on Windows
+* Add raw event (raw-<) for key between shift and Z on ISO keyboards
+* Gracefully handle invalid raw input device data on Windows
+* Correctly handle negative axis input from Windows raw input devices (#1218)
+* FrSky RC controller is now registered as flight stick (#1218)
+
+Deployment
+* Support building with tkinter on all supported platforms (#780)
+* Fix issue with zipimport module not being packaged
+* Fix grayscale icons becoming blue when scaled automatically
+* Automatically include cacert.pem when depending on certifi
+* Suppress assorted spurious missing module warnings
+* Targeting linux_x86_64 / linux_i686 also allows use of manylinux wheels
+
+Build
+* Add support for Maya 2022 (#1213)
+* Support building with Visual Studio 2022
+* Support building with macOS 11.3 SDK (and work around clang crash)
+* Support building with Windows 11 SDK
+* Build Ubuntu .deb files with bindings for multiple Python 3 versions
+* Support compilation with Assimp 5.x (#1212)
+* Support building on manylinux_2_24
+
+Miscellaneous
+* Fix nodes with same tag key but different value getting flattened together
+* taskMgr.step() now restores previous SIGINT handler afterwards (#1180)
+* Add base.clock as alias for globalClock
+* FilterManager mul parameter now accepts floating-point values (#1231)
+* Assorted minor API documentation improvements
+* Fix memory leak getting Bullet persistent manifolds from Python (#1193)
+* Fix assertion in PythonLoaderFileType with debug Python build
+* Add missing property interface to PlaneNode
+* Fix prepare_scene() not properly invoking the Shader Generator
+* Add name property to AICharacter class (#1205)
+* Add bullet-split-impulse configuration variable (#1201)
+* Fix slider thumb entering dragging state on keyboard button press (#1188)
+* Allow OnscreenImage to be created before ShowBase is created (#1209)
+* Fix manager, t, play_rate, duration properties of Sequence/Parallel (#1202)
+* Expose ButtonEvent API to Python (UNSTABLE API, will be changed soon)
+
+-----------------------  RELEASE 1.10.10  -----------------------
+
+This release fixes assorted, mostly very minor bugs.
+
+* Round refresh rates when choosing display mode on macOS (#1144)
+* Vectors now support floor division
+* It is now possible to use round(), ceil() and floor() with vector types
+* Add RenderState::get_unused_states()
+* Fix assertion error in RenderState::get_num_unused_states()
+* Fix Assimp loader not importing normal vectors correctly (#1163)
+* Fix error when trying to render DirectGUI in offscreen mode (#1174)
+* Fix crash when resizing window in multi-window DirectX 9 application (#1167)
+* Fixes to enable compilation with recent OpenEXR and FFMpeg versions
+* Fix draw callback being called twice if cull callback calls upcall()
+* Improve error message when display module fails to load
+* Fix writing/reading BitArray to/from bam files on 64-bit systems (#1181)
+* evdev input devices (such as gamepads) are now supported in FreeBSD as well
+* Panda no longer tries to compress buffer textures when compression is enabled
+* Fix Geom::make_lines_in_place() (& points, patches) leaving invalid state
+* Fix memory leak when cleaning up FilterManager (#1166)
+* Fix memory leak deleting multisample OpenGL FBOs (#1166)
+* Fix auto-binding of SSBOs sometimes causing overlapping bindings (#1176)
+* PSSMCameraRig::update() now accepts a camera node directly
+* Support copying depth buffer for 32-bit depth with 8-bit stencil (#1142)
+* Prevent trying to copy depth from non-depth buffer in OpenGL renderer (#1142)
+* Fixes to format selection for OpenGL renderbuffers (#1137, #1141)
+* gl-depth-zero-to-one is now supported in OpenGL ES 2+ (if driver supports)
+* Maya models can contain more than three eggObjectTypes (#1134)
+* Fix black screen on Linux when switching fullscreen without a WM active
+* Fix Linux crash when trying to load a directory instead of a file (#1140)
+* Fix crash when loading an invalid font
+* Fix a very obscure unintended DirectGUI behavior change in 1.10.9
+
 ------------------------  RELEASE 1.10.9  -----------------------
 
 This is a bugfix release which addresses some severe issues on macOS, as well as

@@ -18,7 +18,7 @@
 #include "typedReferenceCount.h"
 #include "typedWritableReferenceCount.h"
 #include "eventParameter.h"
-#include "atomicAdjust.h"
+#include "patomic.h"
 
 class AsyncTaskManager;
 class AsyncTask;
@@ -62,12 +62,16 @@ PUBLISHED:
   INLINE AsyncFuture();
   virtual ~AsyncFuture();
 
+#ifdef HAVE_PYTHON
   EXTENSION(static PyObject *__await__(PyObject *self));
   EXTENSION(static PyObject *__iter__(PyObject *self));
+#endif // HAVE_PYTHON
 
   INLINE bool done() const;
   INLINE bool cancelled() const;
+#ifdef HAVE_PYTHON
   EXTENSION(PyObject *result(PyObject *self, PyObject *timeout = Py_None) const);
+#endif // HAVE_PYTHON
 
   virtual bool cancel();
 
@@ -75,9 +79,11 @@ PUBLISHED:
   INLINE const std::string &get_done_event() const;
   MAKE_PROPERTY(done_event, get_done_event, set_done_event);
 
+#ifdef HAVE_PYTHON
   EXTENSION(PyObject *add_done_callback(PyObject *self, PyObject *fn));
 
   EXTENSION(static PyObject *gather(PyObject *args));
+#endif // HAVE_PYTHON
   INLINE static PT(AsyncFuture) shield(PT(AsyncFuture) future);
 
   virtual void output(std::ostream &out) const;
@@ -85,8 +91,9 @@ PUBLISHED:
   BLOCKING void wait();
   BLOCKING void wait(double timeout);
 
+#ifdef HAVE_PYTHON
   EXTENSION(void set_result(PyObject *));
-
+#endif // HAVE_PYTHON
 public:
   INLINE void set_result(std::nullptr_t);
   INLINE void set_result(TypedReferenceCount *result);
@@ -110,7 +117,7 @@ private:
   void wake_task(AsyncTask *task);
 
 protected:
-  enum FutureState {
+  enum FutureState : patomic_unsigned_lock_free::value_type {
     // Pending states
     FS_pending,
     FS_locked_pending,
@@ -121,12 +128,13 @@ protected:
   };
   INLINE bool try_lock_pending();
   INLINE void unlock(FutureState new_state = FS_pending);
+  INLINE FutureState get_future_state() const;
   INLINE bool set_future_state(FutureState state);
 
   AsyncTaskManager *_manager;
   TypedObject *_result;
   PT(ReferenceCount) _result_ref;
-  AtomicAdjust::Integer _future_state;
+  patomic_unsigned_lock_free _future_state;
 
   std::string _done_event;
 
@@ -176,7 +184,7 @@ public:
 
 private:
   const Futures _futures;
-  AtomicAdjust::Integer _num_pending;
+  patomic<size_t> _num_pending;
 
   friend class AsyncFuture;
 
@@ -200,4 +208,4 @@ private:
 
 #include "asyncFuture.I"
 
-#endif
+#endif // !ASYNCFUTURE_H
