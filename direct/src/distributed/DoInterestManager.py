@@ -15,7 +15,15 @@ from direct.showbase.MessengerGlobal import messenger
 from .PyDatagram import PyDatagram
 from direct.directnotify.DirectNotifyGlobal import directNotify
 import types
-from direct.showbase.PythonUtil import report
+from direct.showbase.PythonUtil import (
+    FrameDelayedCall,
+    ScratchPad,
+    SerialNumGen,
+    report,
+    serialNum,
+    uniqueElements,
+    uniqueName,
+)
 
 class InterestState:
     StateActive = 'Active'
@@ -629,6 +637,7 @@ class DoInterestManager(DirectObject.DirectObject):
 
 if __debug__:
     import unittest
+    import time
 
     class AsyncTestCase(unittest.TestCase):
         def setCompleted(self):
@@ -643,7 +652,7 @@ if __debug__:
         suiteClass = AsyncTestSuite
 
     class AsyncTextTestRunner(unittest.TextTestRunner):
-        def run(self, testCase):
+        def run(self, test):
             result = self._makeResult()
             startTime = time.time()
             test(result)

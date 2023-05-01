@@ -71,3 +71,6 @@ __pycache__/
 /.settings/
 /.cproject
 /.project
+
+.idea/
+cmake-build-*/
