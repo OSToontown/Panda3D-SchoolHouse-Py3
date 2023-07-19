@@ -2673,6 +2673,41 @@ class Default:
     # useful for keyword arguments to virtual methods
     pass
 
+superLogFile = None
+def startSuperLog(customFunction = None):
+    global superLogFile
+
+    if not superLogFile:
+        superLogFile = open("c:\\temp\\superLog.txt", "w")
+        def trace_dispatch(a,b,c):
+            if b == 'call' and a.f_code.co_name != '?' and a.f_code.co_name.find("safeRepr") < 0:
+                vars = dict(a.f_locals)
+                if 'self' in vars:
+                    del vars['self']
+                if '__builtins__' in vars:
+                    del vars['__builtins__']
+                for i in vars:
+                    vars[i] = safeReprTypeOnFail(vars[i])
+
+                if customFunction:
+                    superLogFile.write( "before = %s\n"%customFunction())
+
+                superLogFile.write( "%s(%s):%s:%s\n"%(a.f_code.co_filename.split("\\")[-1],a.f_code.co_firstlineno, a.f_code.co_name, vars))
+
+                if customFunction:
+                    superLogFile.write( "after = %s\n"%customFunction())
+
+
+
+                return trace_dispatch
+        sys.settrace(trace_dispatch)
+
+def endSuperLog():
+    global superLogFile
+    if superLogFile:
+        sys.settrace(None)
+        superLogFile.close()
+        superLogFile = None
 
 def configIsToday(configName):
     # TODO: replace usage of strptime with something else
